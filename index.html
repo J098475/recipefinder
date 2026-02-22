@@ -13,7 +13,13 @@
             background-color: #f9f9f9;
             color: #333;
         }
-        h1 { margin-bottom: 5px; }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        h1 { margin: 0; }
         .subtitle { color: #666; margin-bottom: 20px; }
         
         .search-container {
@@ -51,6 +57,13 @@
         button:hover { background-color: #ff3333; }
         button:disabled { background-color: #ff9999; cursor: not-allowed; }
         
+        .toggle-view-btn {
+            background-color: #333;
+            width: auto;
+            font-size: 14px;
+        }
+        .toggle-view-btn:hover { background-color: #555; }
+
         #loading { display: none; margin-top: 20px; color: #555; font-style: italic; text-align: center; }
         
         .recipe-card {
@@ -77,12 +90,26 @@
         .perfect-match { background-color: #e8f5e9; color: #2e7d32; }
         .close-match { background-color: #fff3e0; color: #ef6c00; }
         
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
         .instructions-btn {
             background-color: #f0f0f0;
             color: #333;
-            margin-top: 15px;
+            flex: 2;
         }
         .instructions-btn:hover { background-color: #e0e0e0; }
+
+        .fav-btn {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+            flex: 1;
+        }
+        .fav-btn:hover { background-color: #ffcdd2; }
         
         .instructions-container {
             margin-top: 15px;
@@ -99,10 +126,13 @@
 </head>
 <body>
 
-    <h1>Strict Pantry Cook 🥄</h1>
+    <div class="header-container">
+        <h1>Strict Pantry Cook 🥄</h1>
+        <button id="viewFavBtn" class="toggle-view-btn" onclick="toggleView()">❤️ View Favorites</button>
+    </div>
     <p class="subtitle">Discover recipes using <em>only</em> the ingredients you have on hand.</p>
 
-    <div class="search-container">
+    <div id="searchContainer" class="search-container">
         <label for="ingredientsInput">What's in your kitchen?</label>
         <input type="text" id="ingredientsInput" placeholder="e.g., chicken, rice, broccoli, soy sauce">
         
@@ -120,11 +150,17 @@
     </div>
 
     <div id="loading">Searching the Spoonacular database...</div>
+    
     <div id="results"></div>
 
     <script>
         const API_KEY = "b2d4c3c14d3443d19e9fd07f3cceefea"; 
         const equipmentFilter = ["skillet", "pan", "pot", "bowl", "oven", "sheet", "foil", "knife", "board", "blender", "processor", "dish", "plate"];
+
+        // State Management
+        let currentSearchResults = [];
+        let favorites = JSON.parse(localStorage.getItem("pantryFavorites")) || [];
+        let showingFavorites = false;
 
         async function findRecipes() {
             const inputField = document.getElementById("ingredientsInput").value;
@@ -142,7 +178,6 @@
 
             loadingDiv.style.display = "block";
 
-            // Upgraded to complexSearch! We use fillIngredients=true to get the missed/used arrays back.
             let url = `https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY}&includeIngredients=${ingredientsList.join(',')}&fillIngredients=true&sort=max-used-ingredients&number=10&ignorePantry=true`;
             
             if (dietSelect) {
@@ -154,7 +189,6 @@
                 if (!response.ok) throw new Error("Network response was not ok");
                 const data = await response.json();
                 
-                // complexSearch returns recipes inside a "results" array
                 let recipes = data.results;
 
                 if (!recipes || recipes.length === 0) {
@@ -162,8 +196,8 @@
                     return;
                 }
 
+                // Scrub the equipment bugs out
                 recipes.forEach(recipe => {
-                    // Ensure the arrays exist (complexSearch can sometimes omit them if empty)
                     recipe.missedIngredients = recipe.missedIngredients || [];
                     recipe.usedIngredients = recipe.usedIngredients || [];
 
@@ -177,29 +211,11 @@
                 });
 
                 recipes.sort((a, b) => a.missedIngredientCount - b.missedIngredientCount);
+                
+                // Save the scrubbed results to our global state
+                currentSearchResults = recipes;
+                renderCards(currentSearchResults);
 
-                recipes.forEach(recipe => {
-                    const usedIngredients = recipe.usedIngredients.map(ing => ing.name).join(', ');
-                    const missingIngredients = recipe.missedIngredients.map(ing => ing.name).join(', ');
-                    
-                    let badgeHtml = recipe.missedIngredientCount === 0 
-                        ? `<span class="match-badge perfect-match">✨ Perfect Match (0 Missing)</span>`
-                        : `<span class="match-badge close-match">Almost There (${recipe.missedIngredientCount} Missing)</span>`;
-
-                    const card = document.createElement("div");
-                    card.className = "recipe-card";
-                    card.innerHTML = `
-                        ${badgeHtml}
-                        <h2 style="margin-top: 5px;">${recipe.title}</h2>
-                        <img src="${recipe.image}" alt="${recipe.title}">
-                        <p><strong>Ingredients you have:</strong> ${usedIngredients || 'None listed'}</p>
-                        ${recipe.missedIngredientCount > 0 ? `<p><strong>You still need:</strong> ${missingIngredients}</p>` : ''}
-                        
-                        <button class="instructions-btn" id="btn-${recipe.id}" onclick="getInstructions(${recipe.id})">View Step-by-Step Instructions</button>
-                        <div id="instructions-${recipe.id}" class="instructions-container" style="display: none;"></div>
-                    `;
-                    resultsDiv.appendChild(card);
-                });
             } catch (error) {
                 resultsDiv.innerHTML = `<p style='color: red; text-align: center;'>Error fetching data: ${error.message}</p>`;
             } finally {
@@ -207,11 +223,94 @@
             }
         }
 
+        // A reusable function to generate the HTML cards
+        function renderCards(recipeArray) {
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "";
+
+            if (recipeArray.length === 0) {
+                resultsDiv.innerHTML = `<p style="text-align: center; color: #666;">No recipes to show right now.</p>`;
+                return;
+            }
+
+            recipeArray.forEach(recipe => {
+                const usedIngredients = (recipe.usedIngredients || []).map(ing => ing.name).join(', ');
+                const missingIngredients = (recipe.missedIngredients || []).map(ing => ing.name).join(', ');
+                
+                const isFav = favorites.some(f => f.id === recipe.id);
+                const favText = isFav ? "❤️ Saved" : "🤍 Save";
+
+                let badgeHtml = recipe.missedIngredientCount === 0 
+                    ? `<span class="match-badge perfect-match">✨ Perfect Match (0 Missing)</span>`
+                    : `<span class="match-badge close-match">Almost There (${recipe.missedIngredientCount} Missing)</span>`;
+
+                const card = document.createElement("div");
+                card.className = "recipe-card";
+                card.innerHTML = `
+                    ${badgeHtml}
+                    <h2 style="margin-top: 5px;">${recipe.title}</h2>
+                    <img src="${recipe.image}" alt="${recipe.title}">
+                    <p><strong>Ingredients you have:</strong> ${usedIngredients || 'None listed'}</p>
+                    ${recipe.missedIngredientCount > 0 ? `<p><strong>You still need:</strong> ${missingIngredients}</p>` : ''}
+                    
+                    <div class="action-buttons">
+                        <button class="instructions-btn" id="btn-${recipe.id}" onclick="getInstructions(${recipe.id})">View Instructions</button>
+                        <button class="fav-btn" id="fav-btn-${recipe.id}" onclick="toggleFavorite(${recipe.id})">${favText}</button>
+                    </div>
+                    
+                    <div id="instructions-${recipe.id}" class="instructions-container" style="display: none;"></div>
+                `;
+                resultsDiv.appendChild(card);
+            });
+        }
+
+        // Logic for toggling favorites
+        function toggleFavorite(recipeId) {
+            const isFav = favorites.some(f => f.id === recipeId);
+            
+            if (isFav) {
+                // Remove from favorites
+                favorites = favorites.filter(f => f.id !== recipeId);
+            } else {
+                // Add to favorites (look for it in either search results or existing favorites)
+                const recipeToSave = currentSearchResults.find(r => r.id === recipeId) || favorites.find(r => r.id === recipeId);
+                if (recipeToSave) favorites.push(recipeToSave);
+            }
+            
+            // Push the updated array to the browser's local storage
+            localStorage.setItem("pantryFavorites", JSON.stringify(favorites));
+
+            // Update the UI dynamically
+            if (showingFavorites) {
+                renderCards(favorites); // Re-render if looking at favorites list
+            } else {
+                const btn = document.getElementById(`fav-btn-${recipeId}`);
+                if (btn) btn.innerText = isFav ? "🤍 Save" : "❤️ Saved";
+            }
+        }
+
+        // Toggle between Search view and Favorites view
+        function toggleView() {
+            showingFavorites = !showingFavorites;
+            const viewBtn = document.getElementById("viewFavBtn");
+            const searchContainer = document.getElementById("searchContainer");
+            
+            if (showingFavorites) {
+                viewBtn.innerText = "🔍 Back to Search";
+                searchContainer.style.display = "none";
+                renderCards(favorites);
+            } else {
+                viewBtn.innerText = "❤️ View Favorites";
+                searchContainer.style.display = "block";
+                renderCards(currentSearchResults);
+            }
+        }
+
         async function getInstructions(recipeId) {
             const btn = document.getElementById(`btn-${recipeId}`);
             const container = document.getElementById(`instructions-${recipeId}`);
             
-            btn.innerText = "Loading instructions...";
+            btn.innerText = "Loading...";
             btn.disabled = true;
 
             const instUrl = `https://api.spoonacular.com/recipes/${recipeId}/analyzedInstructions?apiKey=${API_KEY}`;
@@ -237,7 +336,7 @@
             } catch (error) {
                 container.style.display = "block";
                 container.innerHTML = "<p style='color: red;'>Failed to load instructions. Please try again.</p>";
-                btn.innerText = "View Step-by-Step Instructions";
+                btn.innerText = "View Instructions";
                 btn.disabled = false;
             }
         }
