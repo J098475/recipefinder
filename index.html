@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 600px;
+            max-width: 650px;
             margin: 40px auto;
             padding: 20px;
             background-color: #f9f9f9;
@@ -17,43 +17,71 @@
         .subtitle { color: #666; margin-bottom: 20px; }
         input[type="text"] {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 10px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 6px;
             box-sizing: border-box;
+            font-size: 16px;
         }
         button {
             background-color: #ff4b4b;
             color: white;
-            padding: 10px 15px;
+            padding: 12px 18px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 16px;
         }
         button:hover { background-color: #ff3333; }
+        button:disabled { background-color: #ff9999; cursor: not-allowed; }
+        
         #loading { display: none; margin-top: 20px; color: #555; font-style: italic; }
+        
         .recipe-card {
             background: white;
-            padding: 20px;
+            padding: 24px;
             margin-top: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #eaeaea;
         }
         .recipe-card img {
             max-width: 100%;
-            border-radius: 4px;
+            border-radius: 6px;
+            margin-bottom: 15px;
         }
-        .recipe-link {
+        .match-badge {
             display: inline-block;
-            margin-top: 10px;
-            color: #0066cc;
-            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 14px;
             font-weight: bold;
+            margin-bottom: 10px;
         }
-        .recipe-link:hover { text-decoration: underline; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        .perfect-match { background-color: #e8f5e9; color: #2e7d32; }
+        .close-match { background-color: #fff3e0; color: #ef6c00; }
+        
+        .instructions-btn {
+            background-color: #f0f0f0;
+            color: #333;
+            margin-top: 15px;
+            width: 100%;
+        }
+        .instructions-btn:hover { background-color: #e0e0e0; }
+        
+        .instructions-container {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #fefefe;
+            border-left: 4px solid #ff4b4b;
+            border-radius: 0 4px 4px 0;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .instructions-container ol { margin: 0; padding-left: 20px; }
+        .instructions-container li { margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -68,17 +96,18 @@
     <div id="results"></div>
 
     <script>
-        const API_KEY = "b2d4c3c14d3443d19e9fd07f3cceefea"; // <-- PASTE YOUR KEY HERE
+        const API_KEY = "b2d4c3c14d3443d19e9fd07f3cceefea"; 
+
+        // Common kitchen tools that Spoonacular sometimes mistakenly tags as ingredients
+        const equipmentFilter = ["skillet", "pan", "pot", "bowl", "oven", "sheet", "foil", "knife", "board", "blender", "processor", "dish", "plate"];
 
         async function findRecipes() {
             const inputField = document.getElementById("ingredientsInput").value;
             const resultsDiv = document.getElementById("results");
             const loadingDiv = document.getElementById("loading");
 
-            // Clear previous results
             resultsDiv.innerHTML = "";
             
-            // Format input
             const ingredientsList = inputField.split(',').map(i => i.trim()).filter(i => i);
             if (ingredientsList.length === 0) {
                 resultsDiv.innerHTML = "<p style='color: #ff4b4b;'>Please enter some ingredients.</p>";
@@ -87,55 +116,98 @@
 
             loadingDiv.style.display = "block";
 
-            const url = `https://api.spoonacular.com/recipes/findByIngredients?apiKey=${API_KEY}&ingredients=${ingredientsList.join(',')}&number=15&ranking=2&ignorePantry=true`;
+            // ranking=2 ensures recipes are returned sorted by least missing ingredients first
+            const url = `https://api.spoonacular.com/recipes/findByIngredients?apiKey=${API_KEY}&ingredients=${ingredientsList.join(',')}&number=10&ranking=2&ignorePantry=true`;
 
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error("Network response was not ok");
-                const recipes = await response.json();
+                let recipes = await response.json();
 
-                // STRICT FILTER: Keep only recipes missing 0 ingredients
-                const strictMatches = recipes.filter(r => r.missedIngredientCount === 0);
+                // 1. Scrub the "skillet" bug and recalculate missing ingredients
+                recipes.forEach(recipe => {
+                    recipe.missedIngredients = recipe.missedIngredients.filter(ing => {
+                        const name = ing.name.toLowerCase();
+                        const isEquipment = equipmentFilter.some(tool => name.includes(tool));
+                        const isNonFoodAisle = ing.aisle === "Not in Grocery Store" || ing.aisle === "Equipment";
+                        return !isEquipment && !isNonFoodAisle;
+                    });
+                    // Update count after filtering
+                    recipe.missedIngredientCount = recipe.missedIngredients.length;
+                });
 
-                if (strictMatches.length > 0) {
-                    resultsDiv.innerHTML = `<h3 style="color: #2e7d32;">Found ${strictMatches.length} recipes you can make right now!</h3>`;
-                    
-                    strictMatches.forEach(recipe => {
+                // 2. Re-sort the list just in case our scrubber changed the hierarchy
+                recipes.sort((a, b) => a.missedIngredientCount - b.missedIngredientCount);
+
+                if (recipes.length > 0) {
+                    recipes.forEach(recipe => {
                         const usedIngredients = recipe.usedIngredients.map(ing => ing.name).join(', ');
-                        const recipeUrlTitle = recipe.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/ /g, '-').toLowerCase();
+                        const missingIngredients = recipe.missedIngredients.map(ing => ing.name).join(', ');
                         
+                        let badgeHtml = "";
+                        if (recipe.missedIngredientCount === 0) {
+                            badgeHtml = `<span class="match-badge perfect-match">✨ Perfect Match (0 Missing)</span>`;
+                        } else {
+                            badgeHtml = `<span class="match-badge close-match">Almost There (${recipe.missedIngredientCount} Missing)</span>`;
+                        }
+
                         const card = document.createElement("div");
                         card.className = "recipe-card";
                         card.innerHTML = `
-                            <h2>${recipe.title}</h2>
+                            ${badgeHtml}
+                            <h2 style="margin-top: 5px;">${recipe.title}</h2>
                             <img src="${recipe.image}" alt="${recipe.title}">
-                            <p><strong>Ingredients used:</strong> ${usedIngredients}</p>
-                            <a class="recipe-link" href="https://spoonacular.com/recipes/${recipeUrlTitle}-${recipe.id}" target="_blank">View Recipe Details on Spoonacular</a>
+                            <p><strong>Ingredients you have:</strong> ${usedIngredients}</p>
+                            ${recipe.missedIngredientCount > 0 ? `<p><strong>You still need:</strong> ${missingIngredients}</p>` : ''}
+                            
+                            <button class="instructions-btn" id="btn-${recipe.id}" onclick="getInstructions(${recipe.id})">View Step-by-Step Instructions</button>
+                            <div id="instructions-${recipe.id}" class="instructions-container" style="display: none;"></div>
                         `;
                         resultsDiv.appendChild(card);
                     });
                 } else {
-                    let fallbackHtml = `<p style="color: #1565c0; background: #e3f2fd; padding: 10px; border-radius: 4px;">No recipes found that strictly use <em>only</em> those ingredients.</p>`;
-                    
-                    // Graceful fallback
-                    if (recipes.length > 0) {
-                        const closest = recipes[0];
-                        const missingIngredients = closest.missedIngredients.map(ing => ing.name).join(', ');
-                        fallbackHtml += `
-                            <div class="recipe-card">
-                                <h3>Next Closest Match</h3>
-                                <h4>${closest.title} (Missing ${closest.missedIngredientCount} ingredient)</h4>
-                                <img src="${closest.image}" alt="${closest.title}" style="max-width: 200px;">
-                                <p><strong>You just need to buy:</strong> ${missingIngredients}</p>
-                            </div>
-                        `;
-                    }
-                    resultsDiv.innerHTML = fallbackHtml;
+                    resultsDiv.innerHTML = `<p style="color: #ff4b4b;">No recipes found. Try adding a few more ingredients!</p>`;
                 }
             } catch (error) {
                 resultsDiv.innerHTML = `<p style='color: red;'>Error fetching data: ${error.message}</p>`;
             } finally {
                 loadingDiv.style.display = "none";
+            }
+        }
+
+        // 3. Function to fetch instructions only when the user clicks the button
+        async function getInstructions(recipeId) {
+            const btn = document.getElementById(`btn-${recipeId}`);
+            const container = document.getElementById(`instructions-${recipeId}`);
+            
+            btn.innerText = "Loading instructions...";
+            btn.disabled = true;
+
+            const instUrl = `https://api.spoonacular.com/recipes/${recipeId}/analyzedInstructions?apiKey=${API_KEY}`;
+
+            try {
+                const response = await fetch(instUrl);
+                const data = await response.json();
+
+                container.style.display = "block"; // Show the container
+
+                if (data.length > 0 && data[0].steps.length > 0) {
+                    let stepsHtml = "<ol>";
+                    data[0].steps.forEach(step => {
+                        stepsHtml += `<li>${step.step}</li>`;
+                    });
+                    stepsHtml += "</ol>";
+                    container.innerHTML = stepsHtml;
+                } else {
+                    container.innerHTML = "<p><em>Sorry, no detailed instructions are available for this recipe.</em></p>";
+                }
+                
+                btn.style.display = "none"; // Hide button after successful load
+            } catch (error) {
+                container.style.display = "block";
+                container.innerHTML = "<p style='color: red;'>Failed to load instructions. Please try again.</p>";
+                btn.innerText = "View Step-by-Step Instructions";
+                btn.disabled = false;
             }
         }
     </script>
