@@ -3,50 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strict Pantry Cook</title>
+    <title>Ultimate Pantry & Recipe Cook</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 650px;
-            margin: 40px auto;
+            max-width: 700px;
+            margin: 30px auto;
             padding: 20px;
-            background-color: #f9f9f9;
+            background-color: #f4f6f8;
             color: #333;
         }
-        .header-container {
+        
+        /* Navigation */
+        .top-nav {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        h1 { margin: 0; }
+        .nav-btn {
+            flex: 1;
+            background: #eee;
+            color: #333;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .nav-btn.active { background: #ff4b4b; color: white; }
+        .nav-btn:hover:not(.active) { background: #e0e0e0; }
+
+        h1 { margin: 0 0 5px 0; }
         .subtitle { color: #666; margin-bottom: 20px; }
         
+        /* Search Form Grid */
         .search-container {
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             margin-bottom: 20px;
-            border: 1px solid #eaeaea;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
+        .full-width { grid-column: span 2; }
         
-        label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 14px;}
-        
+        label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 13px; color: #555;}
         input[type="text"], select {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
+            padding: 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
             box-sizing: border-box;
-            font-size: 16px;
+            font-size: 15px;
         }
         
-        button {
+        .main-search-btn {
             background-color: #ff4b4b;
             color: white;
-            padding: 12px 18px;
+            padding: 14px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -54,18 +74,11 @@
             font-size: 16px;
             width: 100%;
         }
-        button:hover { background-color: #ff3333; }
-        button:disabled { background-color: #ff9999; cursor: not-allowed; }
-        
-        .toggle-view-btn {
-            background-color: #333;
-            width: auto;
-            font-size: 14px;
-        }
-        .toggle-view-btn:hover { background-color: #555; }
+        .main-search-btn:hover { background-color: #e04343; }
 
         #loading { display: none; margin-top: 20px; color: #555; font-style: italic; text-align: center; }
         
+        /* Cards */
         .recipe-card {
             background: white;
             padding: 24px;
@@ -79,79 +92,116 @@
             border-radius: 6px;
             margin-bottom: 15px;
         }
-        .match-badge {
+        
+        .ingredient-tag {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 15px;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 10px;
+            margin: 2px;
         }
-        .perfect-match { background-color: #e8f5e9; color: #2e7d32; }
-        .close-match { background-color: #fff3e0; color: #ef6c00; }
-        
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
+        .missing-tag {
+            background: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffe0b2;
         }
-        
-        .instructions-btn {
-            background-color: #f0f0f0;
-            color: #333;
-            flex: 2;
+        .add-cart-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 2px;
+            font-size: 14px;
         }
-        .instructions-btn:hover { background-color: #e0e0e0; }
+        .add-cart-btn:hover { transform: scale(1.2); }
 
-        .fav-btn {
-            background-color: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
-            flex: 1;
-        }
-        .fav-btn:hover { background-color: #ffcdd2; }
+        /* Action Buttons */
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-secondary { background-color: #f0f0f0; color: #333; flex: 2; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;}
+        .btn-secondary:hover { background-color: #e0e0e0; }
+        .btn-fav { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; flex: 1; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;}
+        .btn-fav:hover { background-color: #ffcdd2; }
         
-        .instructions-container {
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #fefefe;
-            border-left: 4px solid #ff4b4b;
-            border-radius: 0 4px 4px 0;
-            font-size: 15px;
-            line-height: 1.5;
+        .instructions-container { margin-top: 15px; padding: 15px; background-color: #fefefe; border-left: 4px solid #ff4b4b; border-radius: 0 4px 4px 0; font-size: 15px; line-height: 1.5; }
+        
+        /* Shopping List View */
+        .shopping-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .instructions-container ol { margin: 0; padding-left: 20px; }
-        .instructions-container li { margin-bottom: 10px; }
+        .delete-item-btn { background: #ff4b4b; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="header-container">
-        <h1>Strict Pantry Cook 🥄</h1>
-        <button id="viewFavBtn" class="toggle-view-btn" onclick="toggleView()">❤️ View Favorites</button>
+    <div class="top-nav">
+        <button id="navSearch" class="nav-btn active" onclick="switchView('search')">🔍 Search</button>
+        <button id="navFav" class="nav-btn" onclick="switchView('favorites')">❤️ Favorites</button>
+        <button id="navShop" class="nav-btn" onclick="switchView('shopping')">🛒 Shopping List</button>
     </div>
-    <p class="subtitle">Discover recipes using <em>only</em> the ingredients you have on hand.</p>
 
-    <div id="searchContainer" class="search-container">
-        <label for="ingredientsInput">What's in your kitchen?</label>
-        <input type="text" id="ingredientsInput" placeholder="e.g., chicken, rice, broccoli, soy sauce">
-        
-        <label for="dietSelect">Dietary Preference (Optional)</label>
-        <select id="dietSelect">
-            <option value="">No Restriction</option>
-            <option value="vegetarian">Vegetarian</option>
-            <option value="vegan">Vegan</option>
-            <option value="gluten free">Gluten Free</option>
-            <option value="ketogenic">Keto</option>
-            <option value="paleo">Paleo</option>
-        </select>
+    <h1>Ultimate Recipe Finder 🍳</h1>
+    <p class="subtitle" id="pageSubtitle">Search by what you have, what you crave, or both.</p>
 
-        <button onclick="findRecipes()">Find Recipes</button>
+    <div id="searchView">
+        <div class="search-container">
+            <div class="full-width">
+                <label for="ingredientsInput">Pantry Ingredients (Comma separated)</label>
+                <input type="text" id="ingredientsInput" placeholder="e.g., chicken, rice, garlic">
+            </div>
+            
+            <div>
+                <label for="keywordInput">Keyword / Dish</label>
+                <input type="text" id="keywordInput" placeholder="e.g., Pasta, Tacos">
+            </div>
+            
+            <div>
+                <label for="cuisineSelect">Cuisine</label>
+                <select id="cuisineSelect">
+                    <option value="">Any Cuisine</option>
+                    <option value="italian">Italian</option>
+                    <option value="mexican">Mexican</option>
+                    <option value="asian">Asian</option>
+                    <option value="american">American</option>
+                    <option value="indian">Indian</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="dietSelect">Dietary Preference</label>
+                <select id="dietSelect">
+                    <option value="">No Restriction</option>
+                    <option value="vegetarian">Vegetarian</option>
+                    <option value="vegan">Vegan</option>
+                    <option value="gluten free">Gluten Free</option>
+                    <option value="ketogenic">Keto</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="sortSelect">Sort Results By</label>
+                <select id="sortSelect">
+                    <option value="max-used-ingredients">Best Ingredient Match</option>
+                    <option value="popularity">Most Popular</option>
+                    <option value="time">Quickest to Make</option>
+                </select>
+            </div>
+
+            <div class="full-width">
+                <button class="main-search-btn" onclick="findRecipes()">Search Recipes</button>
+            </div>
+        </div>
     </div>
 
     <div id="loading">Searching the Spoonacular database...</div>
     
-    <div id="results"></div>
+    <div id="contentArea"></div>
 
     <script>
         const API_KEY = "b2d4c3c14d3443d19e9fd07f3cceefea"; 
@@ -160,29 +210,69 @@
         // State Management
         let currentSearchResults = [];
         let favorites = JSON.parse(localStorage.getItem("pantryFavorites")) || [];
-        let showingFavorites = false;
+        let shoppingList = JSON.parse(localStorage.getItem("pantryShoppingList")) || [];
+        let currentView = 'search';
 
+        // --- NAVIGATION & VIEWS ---
+        function switchView(viewName) {
+            currentView = viewName;
+            
+            // Update Nav Button Styles
+            document.getElementById('navSearch').classList.remove('active');
+            document.getElementById('navFav').classList.remove('active');
+            document.getElementById('navShop').classList.remove('active');
+            
+            const searchViewDiv = document.getElementById('searchView');
+            const contentAreaDiv = document.getElementById('contentArea');
+            const subtitle = document.getElementById('pageSubtitle');
+
+            if (viewName === 'search') {
+                document.getElementById('navSearch').classList.add('active');
+                searchViewDiv.style.display = 'block';
+                subtitle.innerText = "Search by what you have, what you crave, or both.";
+                renderRecipeCards(currentSearchResults);
+            } 
+            else if (viewName === 'favorites') {
+                document.getElementById('navFav').classList.add('active');
+                searchViewDiv.style.display = 'none';
+                subtitle.innerText = "Your saved recipes.";
+                renderRecipeCards(favorites);
+            }
+            else if (viewName === 'shopping') {
+                document.getElementById('navShop').classList.add('active');
+                searchViewDiv.style.display = 'none';
+                subtitle.innerText = "Items to buy on your next grocery run.";
+                renderShoppingList();
+            }
+        }
+
+        // --- SEARCH LOGIC ---
         async function findRecipes() {
-            const inputField = document.getElementById("ingredientsInput").value;
-            const dietSelect = document.getElementById("dietSelect").value;
-            const resultsDiv = document.getElementById("results");
+            const ingredients = document.getElementById("ingredientsInput").value.split(',').map(i => i.trim()).filter(i => i);
+            const keyword = document.getElementById("keywordInput").value.trim();
+            const cuisine = document.getElementById("cuisineSelect").value;
+            const diet = document.getElementById("dietSelect").value;
+            const sort = document.getElementById("sortSelect").value;
+            
+            const contentAreaDiv = document.getElementById("contentArea");
             const loadingDiv = document.getElementById("loading");
 
-            resultsDiv.innerHTML = "";
-            
-            const ingredientsList = inputField.split(',').map(i => i.trim()).filter(i => i);
-            if (ingredientsList.length === 0) {
-                resultsDiv.innerHTML = "<p style='color: #ff4b4b; text-align: center;'>Please enter some ingredients.</p>";
+            if (ingredients.length === 0 && !keyword && !cuisine && !diet) {
+                contentAreaDiv.innerHTML = "<p style='color: #ff4b4b; text-align: center;'>Please enter at least one search criteria.</p>";
                 return;
             }
 
+            contentAreaDiv.innerHTML = "";
             loadingDiv.style.display = "block";
 
-            let url = `https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY}&includeIngredients=${ingredientsList.join(',')}&fillIngredients=true&sort=max-used-ingredients&number=10&ignorePantry=true`;
+            // Constructing the super-url
+            let url = `https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY}&fillIngredients=true&number=10&ignorePantry=true`;
             
-            if (dietSelect) {
-                url += `&diet=${dietSelect}`;
-            }
+            if (ingredients.length > 0) url += `&includeIngredients=${ingredients.join(',')}`;
+            if (keyword) url += `&query=${encodeURIComponent(keyword)}`;
+            if (cuisine) url += `&cuisine=${cuisine}`;
+            if (diet) url += `&diet=${diet}`;
+            if (sort) url += `&sort=${sort}`;
 
             try {
                 const response = await fetch(url);
@@ -192,11 +282,11 @@
                 let recipes = data.results;
 
                 if (!recipes || recipes.length === 0) {
-                    resultsDiv.innerHTML = `<p style="color: #ff4b4b; text-align: center;">No recipes found matching those ingredients and filters.</p>`;
+                    contentAreaDiv.innerHTML = `<p style="color: #ff4b4b; text-align: center;">No recipes found. Try loosening your search criteria.</p>`;
                     return;
                 }
 
-                // Scrub the equipment bugs out
+                // Scrub equipment from missing ingredients
                 recipes.forEach(recipe => {
                     recipe.missedIngredients = recipe.missedIngredients || [];
                     recipe.usedIngredients = recipe.usedIngredients || [];
@@ -204,105 +294,124 @@
                     recipe.missedIngredients = recipe.missedIngredients.filter(ing => {
                         const name = ing.name.toLowerCase();
                         const isEquipment = equipmentFilter.some(tool => name.includes(tool));
-                        const isNonFoodAisle = ing.aisle === "Not in Grocery Store" || ing.aisle === "Equipment";
-                        return !isEquipment && !isNonFoodAisle;
+                        const isNonFood = ing.aisle === "Not in Grocery Store" || ing.aisle === "Equipment";
+                        return !isEquipment && !isNonFood;
                     });
-                    recipe.missedIngredientCount = recipe.missedIngredients.length;
                 });
 
-                recipes.sort((a, b) => a.missedIngredientCount - b.missedIngredientCount);
-                
-                // Save the scrubbed results to our global state
                 currentSearchResults = recipes;
-                renderCards(currentSearchResults);
+                renderRecipeCards(currentSearchResults);
 
             } catch (error) {
-                resultsDiv.innerHTML = `<p style='color: red; text-align: center;'>Error fetching data: ${error.message}</p>`;
+                contentAreaDiv.innerHTML = `<p style='color: red; text-align: center;'>Error: ${error.message}</p>`;
             } finally {
                 loadingDiv.style.display = "none";
             }
         }
 
-        // A reusable function to generate the HTML cards
-        function renderCards(recipeArray) {
-            const resultsDiv = document.getElementById("results");
-            resultsDiv.innerHTML = "";
+        // --- RENDERING RECIPES ---
+        function renderRecipeCards(recipeArray) {
+            const container = document.getElementById("contentArea");
+            container.innerHTML = "";
 
             if (recipeArray.length === 0) {
-                resultsDiv.innerHTML = `<p style="text-align: center; color: #666;">No recipes to show right now.</p>`;
+                container.innerHTML = `<p style="text-align: center; color: #666;">Nothing to see here right now.</p>`;
                 return;
             }
 
             recipeArray.forEach(recipe => {
-                const usedIngredients = (recipe.usedIngredients || []).map(ing => ing.name).join(', ');
-                const missingIngredients = (recipe.missedIngredients || []).map(ing => ing.name).join(', ');
-                
                 const isFav = favorites.some(f => f.id === recipe.id);
-                const favText = isFav ? "❤️ Saved" : "🤍 Save";
+                
+                // Format Used Ingredients
+                const usedHtml = (recipe.usedIngredients || []).map(ing => 
+                    `<span class="ingredient-tag">${ing.name}</span>`
+                ).join(' ');
 
-                let badgeHtml = recipe.missedIngredientCount === 0 
-                    ? `<span class="match-badge perfect-match">✨ Perfect Match (0 Missing)</span>`
-                    : `<span class="match-badge close-match">Almost There (${recipe.missedIngredientCount} Missing)</span>`;
+                // Format Missing Ingredients WITH Shopping Cart Button
+                const missingHtml = (recipe.missedIngredients || []).map(ing => 
+                    `<span class="ingredient-tag missing-tag">
+                        ${ing.name} 
+                        <button class="add-cart-btn" onclick="addToShoppingList('${ing.name.replace(/'/g, "\\'")}')" title="Add to List">🛒</button>
+                    </span>`
+                ).join(' ');
 
                 const card = document.createElement("div");
                 card.className = "recipe-card";
                 card.innerHTML = `
-                    ${badgeHtml}
-                    <h2 style="margin-top: 5px;">${recipe.title}</h2>
+                    <h2 style="margin-top: 0;">${recipe.title}</h2>
                     <img src="${recipe.image}" alt="${recipe.title}">
-                    <p><strong>Ingredients you have:</strong> ${usedIngredients || 'None listed'}</p>
-                    ${recipe.missedIngredientCount > 0 ? `<p><strong>You still need:</strong> ${missingIngredients}</p>` : ''}
+                    
+                    <p><strong>Have:</strong> ${usedHtml || '<span style="color:#999">None</span>'}</p>
+                    ${recipe.missedIngredients.length > 0 ? `<p><strong>Need:</strong> ${missingHtml}</p>` : ''}
                     
                     <div class="action-buttons">
-                        <button class="instructions-btn" id="btn-${recipe.id}" onclick="getInstructions(${recipe.id})">View Instructions</button>
-                        <button class="fav-btn" id="fav-btn-${recipe.id}" onclick="toggleFavorite(${recipe.id})">${favText}</button>
+                        <button class="btn-secondary" id="btn-${recipe.id}" onclick="getInstructions(${recipe.id})">View Instructions</button>
+                        <button class="btn-fav" id="fav-btn-${recipe.id}" onclick="toggleFavorite(${recipe.id})">${isFav ? "❤️ Saved" : "🤍 Save"}</button>
                     </div>
                     
                     <div id="instructions-${recipe.id}" class="instructions-container" style="display: none;"></div>
                 `;
-                resultsDiv.appendChild(card);
+                container.appendChild(card);
             });
         }
 
-        // Logic for toggling favorites
+        // --- SHOPPING LIST LOGIC ---
+        function addToShoppingList(item) {
+            // Check if it's already in the list (case-insensitive)
+            const exists = shoppingList.some(i => i.toLowerCase() === item.toLowerCase());
+            if (!exists) {
+                shoppingList.push(item);
+                localStorage.setItem("pantryShoppingList", JSON.stringify(shoppingList));
+                alert(`Added ${item} to your shopping list!`);
+            } else {
+                alert(`${item} is already on your list.`);
+            }
+        }
+
+        function removeFromShoppingList(index) {
+            shoppingList.splice(index, 1);
+            localStorage.setItem("pantryShoppingList", JSON.stringify(shoppingList));
+            renderShoppingList(); // Re-render the list immediately
+        }
+
+        function renderShoppingList() {
+            const container = document.getElementById("contentArea");
+            container.innerHTML = "";
+
+            if (shoppingList.length === 0) {
+                container.innerHTML = `<p style="text-align: center; color: #666;">Your shopping list is empty!</p>`;
+                return;
+            }
+
+            shoppingList.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.className = "shopping-item";
+                div.innerHTML = `
+                    <span style="font-weight: bold; font-size: 16px;">🛒 ${item}</span>
+                    <button class="delete-item-btn" onclick="removeFromShoppingList(${index})">Remove</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- FAVORITES & INSTRUCTIONS LOGIC ---
         function toggleFavorite(recipeId) {
             const isFav = favorites.some(f => f.id === recipeId);
             
             if (isFav) {
-                // Remove from favorites
                 favorites = favorites.filter(f => f.id !== recipeId);
             } else {
-                // Add to favorites (look for it in either search results or existing favorites)
                 const recipeToSave = currentSearchResults.find(r => r.id === recipeId) || favorites.find(r => r.id === recipeId);
                 if (recipeToSave) favorites.push(recipeToSave);
             }
             
-            // Push the updated array to the browser's local storage
             localStorage.setItem("pantryFavorites", JSON.stringify(favorites));
 
-            // Update the UI dynamically
-            if (showingFavorites) {
-                renderCards(favorites); // Re-render if looking at favorites list
+            if (currentView === 'favorites') {
+                renderRecipeCards(favorites); 
             } else {
                 const btn = document.getElementById(`fav-btn-${recipeId}`);
                 if (btn) btn.innerText = isFav ? "🤍 Save" : "❤️ Saved";
-            }
-        }
-
-        // Toggle between Search view and Favorites view
-        function toggleView() {
-            showingFavorites = !showingFavorites;
-            const viewBtn = document.getElementById("viewFavBtn");
-            const searchContainer = document.getElementById("searchContainer");
-            
-            if (showingFavorites) {
-                viewBtn.innerText = "🔍 Back to Search";
-                searchContainer.style.display = "none";
-                renderCards(favorites);
-            } else {
-                viewBtn.innerText = "❤️ View Favorites";
-                searchContainer.style.display = "block";
-                renderCards(currentSearchResults);
             }
         }
 
@@ -313,29 +422,20 @@
             btn.innerText = "Loading...";
             btn.disabled = true;
 
-            const instUrl = `https://api.spoonacular.com/recipes/${recipeId}/analyzedInstructions?apiKey=${API_KEY}`;
-
             try {
-                const response = await fetch(instUrl);
+                const response = await fetch(`https://api.spoonacular.com/recipes/${recipeId}/analyzedInstructions?apiKey=${API_KEY}`);
                 const data = await response.json();
 
                 container.style.display = "block"; 
-
                 if (data.length > 0 && data[0].steps.length > 0) {
-                    let stepsHtml = "<ol>";
-                    data[0].steps.forEach(step => {
-                        stepsHtml += `<li>${step.step}</li>`;
-                    });
-                    stepsHtml += "</ol>";
-                    container.innerHTML = stepsHtml;
+                    container.innerHTML = "<ol>" + data[0].steps.map(s => `<li>${s.step}</li>`).join('') + "</ol>";
                 } else {
-                    container.innerHTML = "<p><em>Sorry, no detailed instructions are available for this recipe.</em></p>";
+                    container.innerHTML = "<p><em>Sorry, no detailed instructions are available.</em></p>";
                 }
-                
                 btn.style.display = "none"; 
             } catch (error) {
                 container.style.display = "block";
-                container.innerHTML = "<p style='color: red;'>Failed to load instructions. Please try again.</p>";
+                container.innerHTML = "<p style='color: red;'>Failed to load instructions.</p>";
                 btn.innerText = "View Instructions";
                 btn.disabled = false;
             }
