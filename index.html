@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strict Pantry Cook</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 { margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #ff4b4b;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #ff3333; }
+        #loading { display: none; margin-top: 20px; color: #555; font-style: italic; }
+        .recipe-card {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .recipe-card img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        .recipe-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .recipe-link:hover { text-decoration: underline; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+    <h1>Strict Pantry Cook 🥄</h1>
+    <p class="subtitle">Discover recipes using <em>only</em> the ingredients you have on hand.</p>
+
+    <input type="text" id="ingredientsInput" placeholder="e.g., chicken, rice, broccoli, soy sauce">
+    <button onclick="findRecipes()">Find Recipes</button>
+
+    <div id="loading">Searching the Spoonacular database...</div>
+    <div id="results"></div>
+
+    <script>
+        const API_KEY = "b2d4c3c14d3443d19e9fd07f3cceefea"; // <-- PASTE YOUR KEY HERE
+
+        async function findRecipes() {
+            const inputField = document.getElementById("ingredientsInput").value;
+            const resultsDiv = document.getElementById("results");
+            const loadingDiv = document.getElementById("loading");
+
+            // Clear previous results
+            resultsDiv.innerHTML = "";
+            
+            // Format input
+            const ingredientsList = inputField.split(',').map(i => i.trim()).filter(i => i);
+            if (ingredientsList.length === 0) {
+                resultsDiv.innerHTML = "<p style='color: #ff4b4b;'>Please enter some ingredients.</p>";
+                return;
+            }
+
+            loadingDiv.style.display = "block";
+
+            const url = `https://api.spoonacular.com/recipes/findByIngredients?apiKey=${API_KEY}&ingredients=${ingredientsList.join(',')}&number=15&ranking=2&ignorePantry=true`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Network response was not ok");
+                const recipes = await response.json();
+
+                // STRICT FILTER: Keep only recipes missing 0 ingredients
+                const strictMatches = recipes.filter(r => r.missedIngredientCount === 0);
+
+                if (strictMatches.length > 0) {
+                    resultsDiv.innerHTML = `<h3 style="color: #2e7d32;">Found ${strictMatches.length} recipes you can make right now!</h3>`;
+                    
+                    strictMatches.forEach(recipe => {
+                        const usedIngredients = recipe.usedIngredients.map(ing => ing.name).join(', ');
+                        const recipeUrlTitle = recipe.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/ /g, '-').toLowerCase();
+                        
+                        const card = document.createElement("div");
+                        card.className = "recipe-card";
+                        card.innerHTML = `
+                            <h2>${recipe.title}</h2>
+                            <img src="${recipe.image}" alt="${recipe.title}">
+                            <p><strong>Ingredients used:</strong> ${usedIngredients}</p>
+                            <a class="recipe-link" href="https://spoonacular.com/recipes/${recipeUrlTitle}-${recipe.id}" target="_blank">View Recipe Details on Spoonacular</a>
+                        `;
+                        resultsDiv.appendChild(card);
+                    });
+                } else {
+                    let fallbackHtml = `<p style="color: #1565c0; background: #e3f2fd; padding: 10px; border-radius: 4px;">No recipes found that strictly use <em>only</em> those ingredients.</p>`;
+                    
+                    // Graceful fallback
+                    if (recipes.length > 0) {
+                        const closest = recipes[0];
+                        const missingIngredients = closest.missedIngredients.map(ing => ing.name).join(', ');
+                        fallbackHtml += `
+                            <div class="recipe-card">
+                                <h3>Next Closest Match</h3>
+                                <h4>${closest.title} (Missing ${closest.missedIngredientCount} ingredient)</h4>
+                                <img src="${closest.image}" alt="${closest.title}" style="max-width: 200px;">
+                                <p><strong>You just need to buy:</strong> ${missingIngredients}</p>
+                            </div>
+                        `;
+                    }
+                    resultsDiv.innerHTML = fallbackHtml;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p style='color: red;'>Error fetching data: ${error.message}</p>`;
+            } finally {
+                loadingDiv.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
